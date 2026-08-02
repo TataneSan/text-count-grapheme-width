@@ -1,5 +1,3 @@
-"""Module entry point."""
-
 import sys
 
 from .cli import main
