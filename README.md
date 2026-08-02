@@ -1,77 +1,109 @@
 # text-count-grapheme-width
 
-Compute the terminal display width of text lines, grapheme by grapheme.
-ASCII and narrow characters count as 1 column, wide CJK and emoji as 2,
-combining marks, variation selectors and ZWJ as 0.
+Compute the **terminal display width** of each line of a text file.
 
-Useful for checking that generated terminal output, tables, banners or
-Unicode-art fits a fixed column budget — including emoji-heavy content
-where a naive character count is misleading.
+Width rules (East Asian Width based, per codepoint):
 
-## Features
+- ASCII and narrow characters count as **1** column
+- wide / full-width characters (CJK ideographs, most emoji) count as **2** columns
+- zero-width characters (combining marks, format characters, ZWJ, variation selectors, control characters) count as **0**
+- tab counts as `--tab-width` columns (default: 1)
 
-- Grapheme-like cluster segmentation (pure stdlib): combining marks,
-  variation selectors, keycap modifiers, ZWJ sequences and regional
-  indicator flag pairs are handled as single glyphs.
-- East Asian wide/fullwidth (W/F) characters count as 2 columns;
-  emoji-presentation clusters count as 2; combining/VS/ZWJ count as 0.
-- Per-line report: number of graphemes and display columns.
-- `--require-max-width N` CI gate: exit code 2 when any line exceeds N.
-- `--json` machine-readable report.
-- Multiple files or stdin.
+Useful to verify that ASCII-art, banners, tables or wrapped text fit a fixed
+terminal width, and to gate that constraint in CI.
 
-## Install
+Zero dependencies — Python standard library only (Python >= 3.9).
+
+## Installation
 
 ```sh
 pip install .
-# or
+# or directly from GitHub
 pip install git+https://github.com/TataneSan/text-count-grapheme-width.git
+```
+
+You can also run it without installing:
+
+```sh
+python3 -m text_count_grapheme_width
 ```
 
 ## Usage
 
-```sh
-# from stdin
-printf 'hello 世界\n' | text-count-grapheme-width -
-
-# from files
-text-count-grapheme-width banner.txt art/*.txt
-
-# machine-readable report
-text-count-grapheme-width --json banner.txt
-
-# CI gate: fail if any line is wider than 40 columns
-text-count-grapheme-width --require-max-width 40 menu.txt
-
-# show the widest line
-text-count-grapheme-width --show-widest *.txt
+```
+text-count-grapheme-width [FILE ...] [--tab-width N] [--require-max-width N]
+                          [--summary] [--json] [-q]
 ```
 
-## Examples
+Reads stdin when no file (or `-`) is given.
 
-```console
-$ printf 'café\n' | text-count-grapheme-width -
-1: 4 cols, 4 graphemes
-max width: 4 cols across 1 file(s)
+### Examples
 
-$ printf 'hi 🎉 ok\n' | text-count-grapheme-width -
-1: 8 cols, 7 graphemes
-max width: 8 cols across 1 file(s)
+Width of each line (one number per line), plus a summary:
 
-$ printf 'this line is way too long\n' | text-count-grapheme-width --require-max-width 10 -
-1: 25 cols, 25 graphemes
-max width: 25 cols across 1 file(s)
-FAIL: max width 25 exceeds required 10
+```sh
+$ printf 'hello\n您好\n' | text-count-grapheme-width -
+5
+4
+summary: 2 lines, max=5 min=4 avg=4.50
+```
+
+CI gate — fail if any line exceeds 80 columns:
+
+```sh
+$ text-count-grapheme-width --require-max-width 80 banner.txt
+error: banner.txt line 12 is 83 columns wide (max 80)
 $ echo $?
 2
 ```
 
+Machine-readable report:
+
+```sh
+$ printf 'a🙂b\n' | text-count-grapheme-width --json -
+{
+  "files": [
+    {
+      "count": 1,
+      "lines": [
+        { "line": 1, "width": 4 }
+      ],
+      "max": 4,
+      "min": 4,
+      "avg": 4.0,
+      "path": "-"
+    }
+  ],
+  "require_max_width": null,
+  "over_max_width": [],
+  "ok": true
+}
+```
+
+Multiple files (summary only):
+
+```sh
+text-count-grapheme-width --summary docs/*.txt
+```
+
+## Options
+
+| Option | Description |
+| --- | --- |
+| `--tab-width N` | columns counted for a tab character (default: 1) |
+| `--require-max-width N` | exit 2 if any line is wider than N columns |
+| `--summary` | print only the per-file summary |
+| `--json` | machine-readable JSON report |
+| `-q`, `--quiet` | suppress human output |
+
 ## Exit codes
 
-- `0` — success (width requirement satisfied, if given)
-- `1` — I/O or CLI error (unreadable file, bad arguments)
-- `2` — `--require-max-width` violated
+| Code | Meaning |
+| --- | --- |
+| 0 | success |
+| 1 | CLI or I/O error |
+| 2 | `--require-max-width` constraint not satisfied |
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT
