@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "text-count-grapheme-width"
+version = "1.0.0"
+description = "Compute terminal display width of text lines (ASCII=1, wide CJK/emoji=2)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [{name = "TataneSan"}]
+keywords = ["unicode", "terminal", "width", "grapheme", "cli"]
+
+[project.scripts]
+text-count-grapheme-width = "text_count_grapheme_width.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["text_count_grapheme_width*"]
